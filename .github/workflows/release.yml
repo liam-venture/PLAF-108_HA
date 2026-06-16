@@ -17,8 +17,8 @@ jobs:
       - name: Create secrets.yaml
         run: |
           cat > plaf108/secrets.yaml <<EOF
-          wifi_ssid: ""
-          wifi_password: ""
+          wifi_ssid: "configure-me"
+          wifi_password: "configure-me"
           fallback_wifi_password: "plaf108setup"
           ota_password: "plaf108ota"
           EOF
