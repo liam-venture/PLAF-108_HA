@@ -55,9 +55,25 @@ plaf108/
 └── secrets.yaml           # Not committed — see below
 ```
 
-## Usage
+---
 
-### Prerequisites
+## Getting started
+
+Two paths to get the firmware on your device.
+
+### Option A — Use a pre-built release
+
+Download the latest `plaf108-vX.Y.Z.factory.bin` from the [Releases](../../releases/latest) page, then follow [First flash (USB)](#first-flash-usb) below.
+
+> The pre-built binary starts with no Wi-Fi credentials. On first boot the device creates a fallback AP named `plaf108-XXXXXX` (password: `plaf108setup`, OTA password: `plaf108ota`). Connect to it and use the web UI at `http://192.168.4.1` to verify the device works, then push your own build via OTA to set your Wi-Fi credentials (see [OTA updates](#ota-updates-after-first-flash)).
+
+---
+
+### Option B — Build from source
+
+All commands below are run from the `plaf108/` directory.
+
+#### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) installed
 - Python 3 with a virtual environment set up (installs `esptool` and `pyserial`):
@@ -68,11 +84,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-- `secrets.yaml` at the root of the project (not committed)
-
 > Always activate the venv (`source .venv/bin/activate`) before running `python` or `esptool` commands.
 
-### secrets.yaml
+#### secrets.yaml
+
+Create `plaf108/secrets.yaml` (not committed):
 
 ```yaml
 wifi_ssid: "YourSSID"
@@ -81,7 +97,7 @@ fallback_wifi_password: "FallbackPassword"
 ota_password: "OTAPassword"
 ```
 
-### Timezone
+#### Timezone
 
 Edit `.home.yaml` and set your timezone:
 
@@ -93,13 +109,7 @@ time:
 
 Full list: [List of tz database time zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
 
-### First flash (USB)
-
-The AF108 does not expose UART pins directly — you need to open the device and connect a USB-to-serial adapter (3.3 V) to the UART pads.
-
-> **Assembly note:** make sure the motor mechanism cannot physically press the Reset Button (GPIO19) during dispensing. An accidental press triggers a restart mid-cycle.
-
-**Step 1 — Compile the firmware**
+#### Compile
 
 ```bash
 docker run --rm -v "${PWD}":/config ghcr.io/esphome/esphome compile .common.plaf108.yaml
@@ -110,7 +120,15 @@ The factory binary is output at:
 .esphome/build/plaf108/.pioenvs/plaf108/firmware.factory.bin
 ```
 
-**Step 2 — Enter flash mode**
+---
+
+## First flash (USB)
+
+The AF108 does not expose UART pins directly — you need to open the device and connect a USB-to-serial adapter (3.3 V) to the UART pads.
+
+> **Assembly note:** make sure the motor mechanism cannot physically press the Reset Button (GPIO19) during dispensing. An accidental press triggers a restart mid-cycle.
+
+**Step 1 — Enter flash mode**
 
 Find your serial port:
 
@@ -138,16 +156,27 @@ waiting for download
 
 The device is ready to be flashed. Stop `read_boot.py` (`Ctrl+C`) to free the serial port.
 
-**Step 3 — Flash**
+**Step 2 — Flash**
 
-Then flash:
+Replace the path with the pre-built binary you downloaded (Option A) or the compiled output (Option B):
 
 ```bash
-esptool --port /dev/cu.usbserial-XXX write-flash 0x0 \
-  .esphome/build/plaf108/.pioenvs/plaf108/firmware.factory.bin
+esptool --port /dev/cu.usbserial-XXX write-flash 0x0 <firmware.factory.bin>
 ```
 
-### Debugging boot logs
+---
+
+## OTA updates (after first flash)
+
+Once the device is on the network, run from the `plaf108/` directory:
+
+```bash
+docker run --rm -v "${PWD}":/config ghcr.io/esphome/esphome run .common.plaf108.yaml --device plaf108.local
+```
+
+---
+
+## Debugging boot logs
 
 `read_boot.py` is also useful after a normal boot to check that the device starts correctly. Run it, then power-cycle without holding BOOT:
 
@@ -155,17 +184,11 @@ esptool --port /dev/cu.usbserial-XXX write-flash 0x0 \
 python read_boot.py /dev/cu.usbserial-XXX
 ```
 
-### OTA updates (after first flash)
+---
 
-Once the device is on the network:
+## Testing connectivity only
 
-```bash
-docker run --rm -v "${PWD}":/config ghcr.io/esphome/esphome run .common.plaf108.yaml --device plaf108.local
-```
-
-### Testing connectivity only
-
-`minimal.yaml` is a stripped-down config (no sensors, no motor logic) useful to verify Wi-Fi and OTA work before flashing the full firmware:
+`minimal.yaml` is a stripped-down config (no sensors, no motor logic) useful to verify Wi-Fi and OTA work before flashing the full firmware. Run from the `plaf108/` directory:
 
 ```bash
 docker run --rm -v "${PWD}":/config ghcr.io/esphome/esphome run minimal.yaml

@@ -1,0 +1,42 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create secrets.yaml
+        run: |
+          cat > plaf108/secrets.yaml <<EOF
+          wifi_ssid: ""
+          wifi_password: ""
+          fallback_wifi_password: "plaf108setup"
+          ota_password: "plaf108ota"
+          EOF
+
+      - name: Compile ESPHome firmware
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/plaf108":/config \
+            ghcr.io/esphome/esphome \
+            compile .common.plaf108.yaml
+
+      - name: Rename binary
+        run: |
+          cp plaf108/.esphome/build/plaf108/.pioenvs/plaf108/firmware.factory.bin \
+             "plaf108-${{ github.ref_name }}.factory.bin"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: plaf108-${{ github.ref_name }}.factory.bin
+          generate_release_notes: true
